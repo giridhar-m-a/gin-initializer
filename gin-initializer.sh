@@ -111,7 +111,7 @@ services:
     container_name: ${PROJECT_NAME}_db
     restart: always
     env_file:
-      - .env
+      - .env.dev
     environment:
       POSTGRES_USER: \${DB_USER}
       POSTGRES_PASSWORD: \${DB_PASSWORD}
@@ -178,32 +178,41 @@ EOL
 # Makefile
 #####################################
 cat <<'EOL' > Makefile
-include .env
+ENV_FILE ?= .env
 
-export $(shell sed 's/=.*//' .env)
+# Load variables from the chosen env file
+include $(ENV_FILE)
+export $(shell sed 's/=.*//' $(ENV_FILE))
 
 DB_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
 
+# Development
 dev:
-	docker-compose up --build -d
+	$(MAKE) _run ENV_FILE=.env.dev
 
+# Test
 test:
-	docker-compose -f docker-compose.test.yml up --build -d
+	$(MAKE) _run ENV_FILE=.env.test
 
+# Production
 prod:
-	docker-compose -f docker-compose.prod.yml up --build -d
+	$(MAKE) _run ENV_FILE=.env
+
+# Internal helper to start docker
+_run:
+	docker-compose --env-file $(ENV_FILE) up --build -d
 
 exec:
-	docker-compose exec app sh
+	docker-compose --env-file $(ENV_FILE) exec app sh
 
 logs-app:
-	docker-compose logs -f app
+	docker-compose --env-file $(ENV_FILE) logs -f app
 
 logs-db:
-	docker-compose logs -f db
+	docker-compose --env-file $(ENV_FILE) logs -f db
 
 down:
-	docker-compose down
+	docker-compose --env-file $(ENV_FILE) down
 
 migrate-new:
 	migrate create -ext sql -dir internal/db/migrations -seq $(name)
@@ -213,12 +222,24 @@ migrate-up:
 
 migrate-down:
 	migrate -path internal/db/migrations -database "$(DB_URL)" -verbose down
-  
+
 sqlc:
 	sqlc generate
 
 print-db-url:
-	@echo $(DB_URL)
+	@echo "Select environment (dev/test/prod): "; \
+	read ENV; \
+	if [ "$$ENV" = "dev" ]; then \
+		. ./.env.dev; \
+	elif [ "$$ENV" = "test" ]; then \
+		. ./.env.test; \
+	elif [ "$$ENV" = "prod" ]; then \
+		. ./.env; \
+	else \
+		echo "Invalid environment"; exit 1; \
+	fi; \
+	DB_URL="postgresql://$$DB_USER:$$DB_PASSWORD@localhost:$$DB_PORT/$$DB_NAME?sslmode=$$DB_SSLMODE"; \
+	echo "DB_URL for $$ENV: $$DB_URL"
 EOL
 
 #####################################
@@ -354,7 +375,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     env_file:
-      - .env.dev
+      - .env
     ports:
       - {APP_PORT}:{APP_PORT}
 EOL
