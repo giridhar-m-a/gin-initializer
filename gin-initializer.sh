@@ -40,8 +40,6 @@ DB_SSLMODE=disable
 EOL
 
 cp .env.example .env
-cp .env.example .env.dev
-cp .env.example .env.test
 
 #####################################
 # .dockerignore
@@ -111,7 +109,7 @@ services:
     container_name: ${PROJECT_NAME}_db
     restart: always
     env_file:
-      - .env.dev
+      - .env
     environment:
       POSTGRES_USER: \${DB_USER}
       POSTGRES_PASSWORD: \${DB_PASSWORD}
@@ -138,7 +136,7 @@ services:
     environment:
       - AIR_WATCHER_FORCE_POLLING=true
     env_file:
-      - .env.dev
+      - .env
     volumes:
       - .:/app:delegated
       - air_tmp:/app/tmp
@@ -178,41 +176,26 @@ EOL
 # Makefile
 #####################################
 cat <<'EOL' > Makefile
-ENV_FILE ?= .env
+include .env
 
-# Load variables from the chosen env file
-include $(ENV_FILE)
-export $(shell sed 's/=.*//' $(ENV_FILE))
+export $(shell sed 's/=.*//' .env)
 
 DB_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSLMODE)
 
-# Development
 dev:
-	$(MAKE) _run ENV_FILE=.env.dev
-
-# Test
-test:
-	$(MAKE) _run ENV_FILE=.env.test
-
-# Production
-prod:
-	$(MAKE) _run ENV_FILE=.env
-
-# Internal helper to start docker
-_run:
-	docker-compose --env-file $(ENV_FILE) up --build -d
+	docker-compose up --build -d
 
 exec:
-	docker-compose --env-file $(ENV_FILE) exec app sh
+	docker-compose exec app sh
 
 logs-app:
-	docker-compose --env-file $(ENV_FILE) logs -f app
+	docker-compose logs -f app
 
 logs-db:
-	docker-compose --env-file $(ENV_FILE) logs -f db
+	docker-compose logs -f db
 
 down:
-	docker-compose --env-file $(ENV_FILE) down
+	docker-compose down
 
 migrate-new:
 	migrate create -ext sql -dir internal/db/migrations -seq $(name)
@@ -222,24 +205,12 @@ migrate-up:
 
 migrate-down:
 	migrate -path internal/db/migrations -database "$(DB_URL)" -verbose down
-
+  
 sqlc:
 	sqlc generate
 
 print-db-url:
-	@echo "Select environment (dev/test/prod): "; \
-	read ENV; \
-	if [ "$$ENV" = "dev" ]; then \
-		. ./.env.dev; \
-	elif [ "$$ENV" = "test" ]; then \
-		. ./.env.test; \
-	elif [ "$$ENV" = "prod" ]; then \
-		. ./.env; \
-	else \
-		echo "Invalid environment"; exit 1; \
-	fi; \
-	DB_URL="postgresql://$$DB_USER:$$DB_PASSWORD@localhost:$$DB_PORT/$$DB_NAME?sslmode=$$DB_SSLMODE"; \
-	echo "DB_URL for $$ENV: $$DB_URL"
+	@echo $(DB_URL)
 EOL
 
 #####################################
@@ -349,35 +320,6 @@ func RegisterHealth(rg *gin.RouterGroup) {
 		})
 	})
 }
-EOL
-
-#####################################
-# docker-compose.test.yml (no db/redis)
-#####################################
-cat <<'EOL' > docker-compose.test.yml
-version: "3.9"
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    env_file:
-      - .env.test
-    ports:
-      - {APP_PORT}:{APP_PORT}
-EOL
-
-cat <<'EOL' > docker-compose.prod.yml
-version: "3.9"
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    env_file:
-      - .env
-    ports:
-      - {APP_PORT}:{APP_PORT}
 EOL
 
 #####################################
