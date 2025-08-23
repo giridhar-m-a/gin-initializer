@@ -40,8 +40,6 @@ DB_SSLMODE=disable
 EOL
 
 cp .env.example .env
-cp .env.example .env.dev
-cp .env.example .env.test
 
 #####################################
 # .dockerignore
@@ -138,7 +136,7 @@ services:
     environment:
       - AIR_WATCHER_FORCE_POLLING=true
     env_file:
-      - .env.dev
+      - .env
     volumes:
       - .:/app:delegated
       - air_tmp:/app/tmp
@@ -186,12 +184,6 @@ DB_URL=postgresql://$(DB_USER):$(DB_PASSWORD)@localhost:$(DB_PORT)/$(DB_NAME)?ss
 
 dev:
 	docker-compose up --build -d
-
-test:
-	docker-compose -f docker-compose.test.yml up --build -d
-
-prod:
-	docker-compose -f docker-compose.prod.yml up --build -d
 
 exec:
 	docker-compose exec app sh
@@ -328,35 +320,6 @@ func RegisterHealth(rg *gin.RouterGroup) {
 		})
 	})
 }
-EOL
-
-#####################################
-# docker-compose.test.yml (no db/redis)
-#####################################
-cat <<'EOL' > docker-compose.test.yml
-version: "3.9"
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    env_file:
-      - .env.test
-    ports:
-      - {APP_PORT}:{APP_PORT}
-EOL
-
-cat <<'EOL' > docker-compose.prod.yml
-version: "3.9"
-services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    env_file:
-      - .env.dev
-    ports:
-      - {APP_PORT}:{APP_PORT}
 EOL
 
 #####################################
