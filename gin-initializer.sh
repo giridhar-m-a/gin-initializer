@@ -26,7 +26,7 @@ go get github.com/swaggo/swag@latest
 
 # Create directories
 mkdir -p cmd/server \
-         internal/{api/handler,domain,repositories,services,db/{migrations,queries,sqlc}} \
+         internal/{api/controller,domain,repositories,services,db/{migrations,queries,sqlc}} \
          configs
 
 #####################################
@@ -338,20 +338,20 @@ package api
 
 import (
 	"github.com/gin-gonic/gin"
-	"$PACKAGE_NAME/internal/api/handler"
+	"$PACKAGE_NAME/internal/api/controller"
 )
 
 func RegisterRoutes(r *gin.Engine) {
 	api := r.Group("/api/v1")
-	handler.RegisterHealth(api)
+	controller.RegisterHealth(api)
 }
 EOL
 
 #####################################
-# internal/api/handler/health.go
+# internal/api/controller/health.go
 #####################################
-cat <<EOL > internal/api/handler/health.go
-package handler
+cat <<EOL > internal/api/controller/health.go
+package controller
 
 import (
 	"net/http"
