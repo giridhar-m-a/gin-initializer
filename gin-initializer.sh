@@ -5,13 +5,13 @@ read -p "Enter project name: " PROJECT_NAME
 read -p "Enter Go package name (e.g., github.com/user/project): " PACKAGE_NAME
 
 # Create project directory
-mkdir -p $PROJECT_NAME
-cd $PROJECT_NAME || exit
+mkdir -p "$PROJECT_NAME"
+cd "$PROJECT_NAME" || exit
 
 echo "Initializing Go Gin project: $PROJECT_NAME ($PACKAGE_NAME)"
 
 # Initialize Go module
-go mod init $PACKAGE_NAME
+go mod init "$PACKAGE_NAME"
 
 # Install dependencies
 go get github.com/gin-gonic/gin
@@ -22,12 +22,10 @@ go get github.com/swaggo/gin-swagger
 go get github.com/swaggo/files
 go get github.com/swaggo/swag@latest
 
-
-
 # Create directories
 mkdir -p cmd/server \
-         internal/{api/controller,domain,repositories,services,db/{migrations,queries,sqlc}} \
-         configs
+         internal/{api/controller,domain,repositories,services,db/{migrations,queries,sqlc}} \
+         configs
 
 #####################################
 # .env.example
@@ -91,11 +89,11 @@ RUN apk add --no-cache git bash make
 
 # Install Air (for live reload)
 RUN go install github.com/air-verse/air@latest&& \
-    go install github.com/swaggo/swag/cmd/swag@latest
+    go install github.com/swaggo/swag/cmd/swag@latest
 ENV PATH=$PATH:/go/bin
 
 # Copy dependency files
-COPY go.mod go.sum ./ 
+COPY go.mod go.sum ./ 
 RUN go mod download
 RUN go mod tidy
 
@@ -114,51 +112,51 @@ EOL
 cat <<EOL > docker-compose.yml
 services:
 
-  db:
-    image: postgres:15
-    container_name: ${PROJECT_NAME}_db
-    restart: always
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: \${DB_USER}
-      POSTGRES_PASSWORD: \${DB_PASSWORD}
-      POSTGRES_DB: \${DB_NAME}
-    ports:
-      - "\${DB_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  db:
+    image: postgres:15
+    container_name: ${PROJECT_NAME}_db
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: \${DB_USER}
+      POSTGRES_PASSWORD: \${DB_PASSWORD}
+      POSTGRES_DB: \${DB_NAME}
+    ports:
+      - "\${DB_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7
-    container_name: ${PROJECT_NAME}_redis
-    restart: always
-    ports:
-      - "6379:6379"
+  redis:
+    image: redis:7
+    container_name: ${PROJECT_NAME}_redis
+    restart: always
+    ports:
+      - "6379:6379"
 
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    container_name: ${PROJECT_NAME}_app
-    command: air -c .air.toml
-    working_dir: /app
-    environment:
-      - AIR_WATCHER_FORCE_POLLING=true
-    env_file:
-      - .env
-    volumes:
-      - .:/app:delegated
-      - air_tmp:/app/tmp
-    ports:
-      - \${APP_PORT}:\${APP_PORT}
-    depends_on:
-      - db
-      - redis
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: ${PROJECT_NAME}_app
+    command: air -c .air.toml
+    working_dir: /app
+    environment:
+      - AIR_WATCHER_FORCE_POLLING=true
+    env_file:
+      - .env
+    volumes:
+      - .:/app:delegated
+      - air_tmp:/app/tmp
+    ports:
+      - \${APP_PORT}:\${APP_PORT}
+    depends_on:
+      - db
+      - redis
 
 volumes:
-  postgres_data:
-  air_tmp:
+  postgres_data:
+  air_tmp:
 EOL
 
 #####################################
@@ -169,17 +167,17 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/server"
-  bin = "tmp/main"
-  full_bin = "tmp/main"
-  include_ext = ["go", "tpl", "tmpl", "html"]
-  exclude_dir = ["assets", "vendor", "internal/db/sqlc"]
+  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/server"
+  bin = "tmp/main"
+  full_bin = "tmp/main"
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  exclude_dir = ["assets", "vendor", "internal/db/sqlc"]
 
 [watch]
-  dirs = ["."]
+  dirs = ["."]
 
 [log]
-  time = true
+  time = true
 EOL
 
 #####################################
@@ -215,7 +213,7 @@ migrate-up:
 
 migrate-down:
 	migrate -path internal/db/migrations -database "$(DB_URL)" -verbose down
-  
+  
 sqlc:
 	sqlc generate
 
@@ -247,13 +245,13 @@ EOL
 cat <<'EOL' > sqlc.yaml
 version: "2"
 sql:
-  - schema: "internal/db/migrations"
-    queries: "internal/db/queries"
-    engine: "postgresql"
-    gen:
-      go:
-        package: "sqlc"
-        out: "internal/db/sqlc"
+  - schema: "internal/db/migrations"
+    queries: "internal/db/queries"
+    engine: "postgresql"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/db/sqlc"
 EOL
 
 #####################################
@@ -387,7 +385,7 @@ swag init -g cmd/server/main.go -o docs/ --parseDependency --parseInternal
 go mod tidy
 
 echo "✅ Project $PROJECT_NAME initialized successfully on branch 'main'!"
-echo "-----------------     Next steps:     -----------------"
+echo "-----------------     Next steps:     -----------------"
 echo "cd ./${PROJECT_NAME}"
 echo "1. Configure your .env file"
 echo "2. Run 'make dev' to start the development server"
